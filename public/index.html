@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>SSE Demo</title>
+    </head>
+    <body>
+        <h1>SSE Demo</h1>
+        <p>The point of this script is to test out Server-sent Events (SSE) compared to REST API responses.</p>
+        <form method="get" action="/">
+            <select name="mode">
+                <option value="rest">REST</option>
+                <option value="sse">SSE</option>
+            </select>
+            <button type="submit">Load</button>
+        </form>
+        <div id="target">
+            <p id="msg">Waiting on data!</p>
+        </div>
+        <script type="module">
+            const mode = new URL(window.location).searchParams.get('mode');
+            const route = mode === 'sse' ? '/sse' : '/rest';
+            const solution = mode === 'sse' ? '/js/sse.js' : '/js/rest.js';
+            const { processResponse } = await import(solution);
+
+            if (mode === 'sse') document.querySelector('option[value=sse]').selected = true;
+
+            const msg = document.getElementById('msg');
+            const target = document.getElementById('target');
+            const list = document.createElement('ul');
+
+            target.appendChild(list);
+
+            fetch(route, { method: 'POST' })
+                .then(checkErrors)
+                .then(processResponse.bind(null, processItem))
+                .then(updateMessage.bind(null, 'Data finished loading!'))
+                .catch(handleErrors);
+
+            function updateMessage(message) {
+                msg.innerText = message;
+            }
+
+            function processItem({ message }) {
+                const item = document.createElement('li');
+                item.innerText = message;
+                list.appendChild(item);
+            }
+
+            function checkErrors(response) {
+                if (response.status === 200) return response;
+                console.log('bad response from server');
+                throw Error('Bad response');
+            }
+
+            function handleErrors(error) {
+                console.error('fetch error', error)
+                updateMessage('Request error!');
+            }
+        </script>
+    </body>
+</html>
