@@ -1,0 +1,10 @@
+services:
+
+  nodejs:
+    build:
+      context: .
+    volumes:
+      - ./src:/usr/src/src
+      - ./public:/usr/src/public
+    ports:
+      - 3000:3000
