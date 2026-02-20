@@ -4,6 +4,7 @@ import express from 'express';
 
 const app = express();
 
+// Some request logging
 app.use((req, res, next) => {
     const startTime = Date.now();
     req.startTime = startTime;
@@ -12,8 +13,10 @@ app.use((req, res, next) => {
     next();
 });
 
+// Serve static files
 app.use(express.static(resolve(join(import.meta.dirname, '../public'))));
 
+// Ensure CORS is not a problem
 app.use((req, res, next) => {
     res.set('access-control-allow-origin', '*');
     next();

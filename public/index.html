@@ -11,7 +11,7 @@
             <button type="submit">Load</button>
         </form>
         <div id="target">
-            <p id="msg">Waiting on data!</p>
+            <p id="msg" style="display: none;">Waiting on data!</p>
         </div>
         <script type="module">
             const MODE = new Map([
@@ -20,16 +20,24 @@
                 [ 'event-stream', { route: '/event-stream', solution: '/js/event-source.js' } ],
             ]);
 
-            const mode = new URL(window.location).searchParams.get('mode') || 'rest-request';
-            const { route, method, solution } = MODE.get(mode) || MODE.get('rest-request');
-            const { execute: executeSolution } = await import(solution);
+            const mode = new URL(window.location).searchParams.get('mode');
+
             const { msg, list } = buildUI();
 
-            executeSolution(route, {
-                onMessage: processItem,
-                onError: handleErrors,
-                onDone: updateMessage.bind(null, 'Data finished loading!'),
-            });
+            if (mode && !MODE.has(mode)) alert('Invalid mode!');
+            if (MODE.has(mode)) await runSolution();
+
+            async function runSolution() {
+                const { route, solution } = MODE.get(mode);
+                const { execute: executeSolution } = await import(solution);
+
+                msg.style.display = 'block';
+                executeSolution(route, {
+                    onMessage: processItem,
+                    onError: handleErrors,
+                    onDone: updateMessage.bind(null, 'Data finished loading!'),
+                });
+            }
 
             function processItem({ message }) {
                 const item = document.createElement('li');
