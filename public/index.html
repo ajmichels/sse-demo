@@ -14,63 +14,13 @@
             <p id="msg" style="display: none;">Waiting on data!</p>
         </div>
         <script type="module">
-            const MODE = new Map([
-                [ 'rest-request', { route: '/rest', solution: '/js/rest.js' } ],
-                [ 'jsonl-stream', { route: '/jsonl-stream', solution: '/js/jsonl-stream.js' } ],
-                [ 'event-stream', { route: '/event-stream', solution: '/js/event-source.js' } ],
-            ]);
+            import { MODE, buildUI, runSolution } from '/js/app.js';
 
             const mode = new URL(window.location).searchParams.get('mode');
-
-            const { msg, list } = buildUI();
+            const { msg, list } = buildUI(document, mode);
 
             if (mode && !MODE.has(mode)) alert('Invalid mode!');
-            if (MODE.has(mode)) await runSolution();
-
-            async function runSolution() {
-                const { route, solution } = MODE.get(mode);
-                const { execute: executeSolution } = await import(solution);
-
-                msg.style.display = 'block';
-                executeSolution(route, {
-                    onMessage: processItem,
-                    onError: handleErrors,
-                    onDone: updateMessage.bind(null, 'Data finished loading!'),
-                });
-            }
-
-            function processItem({ message }) {
-                const item = document.createElement('li');
-                item.innerText = message;
-                list.appendChild(item);
-            }
-
-            function handleErrors(error) {
-                console.error('fetch error', error)
-                updateMessage('Request error!');
-            }
-
-            function updateMessage(message) {
-                msg.innerText = message;
-            }
-
-            function buildUI() {
-                const select = document.querySelector('select[name=mode]');
-                MODE.forEach((_, key) => {
-                    const option = document.createElement('option');
-                    option.value = key;
-                    option.innerText = key;
-                    option.selected = mode === key;
-                    select.appendChild(option);
-                });
-
-                const msg = document.getElementById('msg');
-
-                const list = document.createElement('ul');
-                document.getElementById('target').appendChild(list);
-
-                return { msg, list };
-            }
+            if (MODE.has(mode)) await runSolution(document, mode, msg, list);
         </script>
     </body>
 </html>

@@ -1,15 +1,5 @@
-export function execute(route, { onMessage, onDone, onError }) {
-    fetch(route, { method: 'POST' })
-        .then(checkErrors)
-        .then(processResponse.bind(null, onMessage))
-        .then(onDone)
-        .catch(onError);
-}
-
-function checkErrors(response) {
-    if (response.status === 200) return response;
-    console.log('bad response from server');
-    throw Error('Bad response');
+export function resolveData(processItem) {
+    return processResponse.bind(null, processItem);
 }
 
 async function processResponse(handleStreamItem, response) {
