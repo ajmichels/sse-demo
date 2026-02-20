@@ -1,4 +1,5 @@
 import { join, resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import express from 'express';
 
 const app = express();
@@ -18,19 +19,41 @@ app.use((req, res, next) => {
     next();
 });
 
-app.post('/sse', (req, res) => {
+app.post('/jsonl-stream', (req, res) => {
     const writeJSON = input => res.write(JSON.stringify(input) + '\n');
 
     // return an event stream
-    res.set('content-type', 'text/event-stream');
-    writeJSON({message: 'hello world, the stream has started'});
-    console.log('request first bytes sent', req.path, Date.now() - req.startTime);
+    res.set('content-type', 'application/jsonl');
 
     // return random data over time as events
-    const actions = createDelayedActions(writeJSON);
+    const actions = createDelayedActions(writeJSON, 'hello world, the jsonl stream has started');
+
+    actions.at(0).then(() => {
+        console.log('request first bytes sent', req.path, Date.now() - req.startTime);
+    });
 
     // close the connection after last action is done
     actions.at(-1).then(() => res.end());
+});
+
+app.get('/event-stream', (req, res) => {
+    const writeJSON = ({ id, event, ...data }) => res.write(`id: ${id}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+
+    // return an event stream
+    res.set('content-type', 'text/event-stream');
+
+    // return random data over time as events
+    const actions = createDelayedActions(writeJSON, 'hello world, the event stream has started');
+
+    actions.at(0).then(() => {
+        console.log('request first bytes sent', req.path, Date.now() - req.startTime);
+    });
+
+    // close the connection after last action is done
+    actions.at(-1).then(() => {
+        writeJSON({id: randomUUID(), event: 'close', message: 'Goodbye!' });
+        res.end();
+    });
 });
 
 app.post('/rest', async (req, res) => {
@@ -38,10 +61,8 @@ app.post('/rest', async (req, res) => {
     const writeJSON = input => body.data.push(input);
 
     // wait for random data over time
-    writeJSON({ message: 'hello world, the body has started' });
-
     // return all data as JSON
-    await Promise.all(createDelayedActions(writeJSON));
+    await Promise.all(createDelayedActions(writeJSON, 'hello, world, the rest response is here'));
 
     res.set('content-type', 'application/json');
     console.log('request starting response', req.path, Date.now() - req.startTime);
@@ -70,15 +91,16 @@ function delayedAction(ms, cb) {
     });
 }
 
-function createDelayedActions(cb) {
+function createDelayedActions(cb, initialMessage) {
     return [
-        delayedAction(  100, cb.bind(null, { message: '100ms has passed' })),
-        delayedAction(  200, cb.bind(null, { message: '200ms has passed' })),
-        delayedAction(  400, cb.bind(null, { message: '400ms has passed' })),
-        delayedAction(  800, cb.bind(null, { message: '800ms has passed' })),
-        delayedAction( 1600, cb.bind(null, { message: '1600ms has passed' })),
-        delayedAction( 3200, cb.bind(null, { message: '3200ms has passed' })),
-        delayedAction( 6400, cb.bind(null, { message: '6400ms has passed' })),
-        delayedAction(12800, cb.bind(null, { message: '12800ms has passed' })),
+        delayedAction(    0, cb.bind(null, { id: randomUUID(), event: 'message', message: initialMessage })),
+        delayedAction(  100, cb.bind(null, { id: randomUUID(), event: 'message', message: '100ms has passed' })),
+        delayedAction(  200, cb.bind(null, { id: randomUUID(), event: 'message', message: '200ms has passed' })),
+        delayedAction(  400, cb.bind(null, { id: randomUUID(), event: 'message', message: '400ms has passed' })),
+        delayedAction(  800, cb.bind(null, { id: randomUUID(), event: 'message', message: '800ms has passed' })),
+        delayedAction( 1600, cb.bind(null, { id: randomUUID(), event: 'message', message: '1600ms has passed' })),
+        delayedAction( 3200, cb.bind(null, { id: randomUUID(), event: 'message', message: '3200ms has passed' })),
+        delayedAction( 6400, cb.bind(null, { id: randomUUID(), event: 'message', message: '6400ms has passed' })),
+        delayedAction(12800, cb.bind(null, { id: randomUUID(), event: 'message', message: '12800ms has passed' })),
     ];
 }

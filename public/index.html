@@ -7,38 +7,29 @@
         <h1>SSE Demo</h1>
         <p>The point of this script is to test out Server-sent Events (SSE) compared to REST API responses.</p>
         <form method="get" action="/">
-            <select name="mode">
-                <option value="rest">REST</option>
-                <option value="sse">SSE</option>
-            </select>
+            <select name="mode"></select>
             <button type="submit">Load</button>
         </form>
         <div id="target">
             <p id="msg">Waiting on data!</p>
         </div>
         <script type="module">
-            const mode = new URL(window.location).searchParams.get('mode');
-            const route = mode === 'sse' ? '/sse' : '/rest';
-            const solution = mode === 'sse' ? '/js/sse.js' : '/js/rest.js';
-            const { processResponse } = await import(solution);
+            const MODE = new Map([
+                [ 'rest-request', { route: '/rest', solution: '/js/rest.js' } ],
+                [ 'jsonl-stream', { route: '/jsonl-stream', solution: '/js/jsonl-stream.js' } ],
+                [ 'event-stream', { route: '/event-stream', solution: '/js/event-source.js' } ],
+            ]);
 
-            if (mode === 'sse') document.querySelector('option[value=sse]').selected = true;
+            const mode = new URL(window.location).searchParams.get('mode') || 'rest-request';
+            const { route, method, solution } = MODE.get(mode) || MODE.get('rest-request');
+            const { execute: executeSolution } = await import(solution);
+            const { msg, list } = buildUI();
 
-            const msg = document.getElementById('msg');
-            const target = document.getElementById('target');
-            const list = document.createElement('ul');
-
-            target.appendChild(list);
-
-            fetch(route, { method: 'POST' })
-                .then(checkErrors)
-                .then(processResponse.bind(null, processItem))
-                .then(updateMessage.bind(null, 'Data finished loading!'))
-                .catch(handleErrors);
-
-            function updateMessage(message) {
-                msg.innerText = message;
-            }
+            executeSolution(route, {
+                onMessage: processItem,
+                onError: handleErrors,
+                onDone: updateMessage.bind(null, 'Data finished loading!'),
+            });
 
             function processItem({ message }) {
                 const item = document.createElement('li');
@@ -46,15 +37,31 @@
                 list.appendChild(item);
             }
 
-            function checkErrors(response) {
-                if (response.status === 200) return response;
-                console.log('bad response from server');
-                throw Error('Bad response');
-            }
-
             function handleErrors(error) {
                 console.error('fetch error', error)
                 updateMessage('Request error!');
+            }
+
+            function updateMessage(message) {
+                msg.innerText = message;
+            }
+
+            function buildUI() {
+                const select = document.querySelector('select[name=mode]');
+                MODE.forEach((_, key) => {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.innerText = key;
+                    option.selected = mode === key;
+                    select.appendChild(option);
+                });
+
+                const msg = document.getElementById('msg');
+
+                const list = document.createElement('ul');
+                document.getElementById('target').appendChild(list);
+
+                return { msg, list };
             }
         </script>
     </body>

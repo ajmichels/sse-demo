@@ -1,4 +1,18 @@
-export async function processResponse(handleStreamItem, response) {
+export function execute(route, { onMessage, onDone, onError }) {
+    fetch(route, { method: 'POST' })
+        .then(checkErrors)
+        .then(processResponse.bind(null, onMessage))
+        .then(onDone)
+        .catch(onError);
+}
+
+function checkErrors(response) {
+    if (response.status === 200) return response;
+    console.log('bad response from server');
+    throw Error('Bad response');
+}
+
+async function processResponse(handleStreamItem, response) {
     const utf8Decoder = new TextDecoder("utf-8");
     const reader = response.body.getReader();
 
